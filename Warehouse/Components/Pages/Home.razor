@@ -1,0 +1,388 @@
+﻿@page "/warehouse"
+@inject IJSRuntime JS
+@inject IBlazorDownloadFileService downloadFileService
+@inject ILogger<Home> Logger
+
+@using Warehouse.Models
+
+@rendermode InteractiveServer
+
+<link rel="stylesheet" href="Ordergh.css">
+
+<script>
+    function triggerFileImport() {
+        console.log('triggerFileImport function called');
+        document.getElementById('importFile').click();
+    }
+
+    function importFile() {
+        var input = document.getElementById('fileInput');
+        var file = input.files[0];
+        if (file) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('importResult').innerHTML = e.target.result;
+            };
+            reader.readAsText(file);
+        } else {
+            alert('Please select a file to import.');
+        }
+    }
+
+    function saveAsFile(filename, bytesBase64) {
+        var link = document.createElement('a');
+        link.download = filename;
+        link.href = 'data:application/octet-stream;base64,' + bytesBase64;
+        document.body.appendChild(link); // Needed for Firefox
+        link.click();
+        document.body.removeChild(link);
+    }
+</script>
+
+<title>Warehouse App</title>
+
+<div class="container">
+    <h1>Warehouse App</h1>
+    <div class="form-container">
+        <div class="form-group">
+            <label for="ItemName">Introduce New Item:</label>
+            <input type="text" id="ItemName" @bind="newItem" placeholder="Enter Item Name" title="Enter item name">
+        </div>
+        <div class="form-group">
+            <label for="ItemQuantity">Current Quantity:</label>
+            <input type="number" id="ItemQuantity" @bind="newQuantity" placeholder="Enter Quantity" title="Enter current quantity">
+        </div>
+        <div class="form-group">
+            <label for="ItemCategory">Category:</label>
+            <select id="ItemCategory" @bind="newCategory" title="Select a category">
+                <option value="">Select a category</option>
+                @foreach (var category in categories)
+                {
+                    <option value="@category">@category</option>
+                }
+            </select>
+            @if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                <div class="error-message">@errorMessage</div>
+            }
+        </div>
+        <div class="form-group">
+            <label for="NewCategory">Add New Category:</label>
+            <input type="text" id="NewCategory" @bind="newCategoryName" placeholder="Enter Category Name" title="Enter new category name">
+            <button @onclick="AddCategory" title="Add category">Add Category</button>
+        </div>
+        <div class="form-group">
+            <button @onclick="ShowDeleteCategorySection" title="Delete category">Delete Category</button>
+            @if (showDeleteCategorySection)
+            {
+                <div class="delete-category-section">
+                    <label for="DeleteCategorySelect">Select Category to Delete:</label>
+                    <select id="DeleteCategorySelect" @bind="categoryToDelete" title="Select a category to delete">
+                        <option value="">Select a category</option>
+                        @foreach (var category in categories)
+                        {
+                            <option value="@category">@category</option>
+                        }
+                    </select>
+                    <button @onclick="DeleteSelectedCategory" title="Delete selected category">Delete</button>
+                    <button @onclick="HideDeleteCategorySection" title="Cancel deletion">Cancel</button>
+                </div>
+            }
+        </div>
+        <button @onclick="AddItemToList" title="Add item to list">Add Item</button>
+    </div>
+    <div class="form-group">
+        <label for="FilterCategory">Filter by Category:</label>
+        <select id="FilterCategory" @bind="filterCategory" title="Filter items by category">
+            <option value="All">All</option>
+            @foreach (var category in categories)
+            {
+                <option value="@category">@category</option>
+            }
+        </select>
+    </div>
+    <div class="form-group">
+        <button @onclick="ExportToExcel" title="Export items to Excel">Export to Excel</button>
+        <InputFile OnChange="ImportFromExcel" title="Import from Excel" />
+    </div>
+</div>
+<table class="item-list">
+    <thead>
+        <tr>
+            <th class="item-header">Item Name</th>
+            <th class="item-header">Quantity</th>
+            <th class="item-header">Category</th>
+            <th class="item-header">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in itemList.Where(i => filterCategory == "All" || i.Category == filterCategory))
+        {
+            <HomeItemComponent Item="@item" OnDelete="DeleteItem" OnSave="UpdateItem" />
+        }
+    </tbody>
+</table>
+
+<div>
+    <button onclick="location.href='/'" class="entrance">Home</button>
+</div>
+@code {
+    private string newItem { get; set; }
+    private int newQuantity { get; set; }
+    private string newCategory { get; set; } = string.Empty;
+    private string newCategoryName { get; set; }
+    private string filterCategory { get; set; } = "All";
+    private string categoryToDelete { get; set; } = string.Empty;
+    private string errorMessage { get; set; } = string.Empty;
+    private List<string> categories { get; set; } = new List<string> { "Electronics", "Furniture", "Clothing" };
+    private List<HomeItem> itemList { get; set; } = new List<HomeItem>();
+    private bool showDeleteCategorySection { get; set; } = false;
+    private bool isInitialized = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var categoryData = await JS.InvokeAsync<string>("localStorage.getItem", "categories");
+            if (!string.IsNullOrEmpty(categoryData))
+            {
+                categories = JsonSerializer.Deserialize<List<string>>(categoryData);
+            }
+
+            var itemData = await JS.InvokeAsync<string>("localStorage.getItem", "itemList");
+            if (!string.IsNullOrWhiteSpace(itemData))
+            {
+                itemList = JsonSerializer.Deserialize<List<HomeItem>>(itemData);
+            }
+
+            isInitialized = true;
+            StateHasChanged();
+        }
+    }
+
+    private async Task AddItemToList()
+    {
+        if (!string.IsNullOrWhiteSpace(newItem) && newQuantity > 0 && !string.IsNullOrWhiteSpace(newCategory))
+        {
+            var item = new HomeItem { Name = newItem, Quantity = newQuantity, Category = newCategory };
+            itemList.Add(item);
+            await SaveToLocalStorage();
+            newItem = string.Empty;
+            newQuantity = 0;
+            newCategory = string.Empty;
+            errorMessage = string.Empty;
+        }
+        else
+        {
+            errorMessage = "Please fill in all fields, including selecting a category.";
+        }
+    }
+
+    private async Task AddCategory()
+    {
+        if (!string.IsNullOrWhiteSpace(newCategoryName) && !categories.Contains(newCategoryName))
+        {
+            categories.Add(newCategoryName);
+            newCategoryName = string.Empty;
+            await SaveCategoriesToLocalStorage();
+        }
+    }
+
+    private void ShowDeleteCategorySection()
+    {
+        showDeleteCategorySection = true;
+    }
+
+    private void HideDeleteCategorySection()
+    {
+        showDeleteCategorySection = false;
+        categoryToDelete = string.Empty;
+    }
+
+    private async Task DeleteSelectedCategory()
+    {
+        if (!string.IsNullOrWhiteSpace(categoryToDelete) && categories.Contains(categoryToDelete))
+        {
+            categories.Remove(categoryToDelete);
+            categoryToDelete = string.Empty;
+            await SaveCategoriesToLocalStorage();
+            HideDeleteCategorySection();
+        }
+    }
+
+    private async Task DeleteCategory(string category)
+    {
+        categories.Remove(category);
+        await SaveCategoriesToLocalStorage();
+    }
+
+    private async Task SaveCategoriesToLocalStorage()
+    {
+        var data = JsonSerializer.Serialize(categories);
+        await JS.InvokeVoidAsync("localStorage.setItem", "categories", data);
+    }
+
+    public async Task AddItem(HomeItem item)
+    {
+        itemList.Add(item);
+        await SaveToLocalStorage();
+    }
+
+    public async Task UpdateItem(HomeItem item)
+    {
+        await SaveToLocalStorage();
+    }
+
+    public async Task DeleteItem(HomeItem item)
+    {
+        itemList.Remove(item);
+        await SaveToLocalStorage();
+    }
+
+    private async Task SaveToLocalStorage()
+    {
+        var data = JsonSerializer.Serialize(itemList);
+        await JS.InvokeVoidAsync("localStorage.setItem", "itemList", data);
+    }
+
+    private async Task ExportToExcel()
+    {
+        Console.WriteLine("Export to Excel triggered");
+        using (var package = new ExcelPackage())
+        {
+            var worksheet = package.Workbook.Worksheets.Add("Warehouse Items");
+
+            worksheet.Cells[1, 1].Value = "Item Name";
+            worksheet.Cells[1, 2].Value = "Quantity";
+            worksheet.Cells[1, 3].Value = "Category";
+
+            for (int i = 0; i < itemList.Count; i++)
+            {
+                worksheet.Cells[i + 2, 1].Value = itemList[i].Name;
+                worksheet.Cells[i + 2, 2].Value = itemList[i].Quantity;
+                worksheet.Cells[i + 2, 3].Value = itemList[i].Category;
+                Console.WriteLine($"Item exported: {itemList[i].Name}, {itemList[i].Quantity}, {itemList[i].Category}");
+            }
+
+            var fileContent = package.GetAsByteArray();
+            Console.WriteLine("File content converted to byte array");
+
+            await downloadFileService.DownloadFile("WarehouseItems.xlsx", fileContent, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            Console.WriteLine("DownloadFileService invoked to save file");
+        }
+    }
+
+    private async Task TriggerFileImport()
+    {
+        await JS.InvokeVoidAsync("triggerFileImport");
+    }
+
+    private async Task ImportFromExcel(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file != null)
+        {
+            Console.WriteLine("File selected: " + file.Name);
+            try
+            {
+                using (var memoryStream = new MemoryStream())
+                {
+                    await file.OpenReadStream().CopyToAsync(memoryStream);
+                    memoryStream.Position = 0;
+
+                    using (var package = new ExcelPackage(memoryStream))
+                    {
+                        var worksheet = package.Workbook.Worksheets[0];
+
+                        if (worksheet == null)
+                        {
+                            Console.WriteLine("No worksheets found in the file.");
+                            return;
+                        }
+
+                        Console.WriteLine("Worksheet loaded. Rows: " + worksheet.Dimension.Rows);
+
+                        itemList.Clear();
+                        for (int row = 2; row <= worksheet.Dimension.Rows; row++)
+                        {
+                            var name = worksheet.Cells[row, 1].Text;
+                            var quantityText = worksheet.Cells[row, 2].Text;
+                            var category = worksheet.Cells[row, 3].Text;
+
+                            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(quantityText) || string.IsNullOrWhiteSpace(category))
+                            {
+                                Console.WriteLine($"Skipping row {row} due to missing data.");
+                                continue;
+                            }
+
+                            if (!int.TryParse(quantityText, out var quantity))
+                            {
+                                Console.WriteLine($"Invalid quantity in row {row}: {quantityText}");
+                                continue;
+                            }
+
+                            var item = new HomeItem
+                                {
+                                    Name = name,
+                                    Quantity = quantity,
+                                    Category = category
+                                };
+
+                            itemList.Add(item);
+                            Console.WriteLine($"Item added: {item.Name}, {item.Quantity}, {item.Category}");
+                        }
+
+                        await SaveToLocalStorage();
+                        Console.WriteLine("Items imported and saved to localStorage. Total items: " + itemList.Count);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error importing file: " + ex.Message);
+            }
+        }
+        else
+        {
+            Console.WriteLine("No file selected.");
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            var file = e.File;
+            using var streamReader = new StreamReader(file.OpenReadStream());
+            var content = await streamReader.ReadToEndAsync();
+
+            Logger.LogInformation("File content: {Content}", content);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error importing file");
+        }
+    }
+
+  [Parameter] public required HomeItem Item { get; set; }
+
+    [Parameter] public EventCallback<HomeItem> OnSave { get; set; }
+    [Parameter] public EventCallback<HomeItem> OnDelete { get; set; }
+
+    private void EditItem(HomeItem item) => item.IsEditing = true;
+
+    private async Task SaveItem(HomeItem item)
+    {
+        item.IsEditing = false;
+        await OnSave.InvokeAsync(item);
+    }
+
+    private void CancelEdit(HomeItem item) => item.IsEditing = false;
+
+    // private async Task DeleteItem(HomeItem item)
+    // {
+    //     await OnDelete.InvokeAsync(item);
+    // }
+}

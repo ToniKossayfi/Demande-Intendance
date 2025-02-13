@@ -1,0 +1,151 @@
+﻿@page "/check"
+@rendermode InteractiveServer
+
+<link rel="stylesheet" href="Ordergh.css">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+<script>
+    var file1Data = null;
+    var file2Data = null;
+
+    function triggerFileImport(inputId) {
+        document.getElementById(inputId).click();
+    }
+
+    function importFile(inputId, resultId) {
+        var input = document.getElementById(inputId);
+        var file = input.files[0];
+        if (file) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var data = new Uint8Array(e.target.result);
+                var workbook = XLSX.read(data, { type: 'array' });
+                var sheetName = workbook.SheetNames[0];
+                var sheet = workbook.Sheets[sheetName];
+                var html = XLSX.utils.sheet_to_html(sheet);
+                document.getElementById(resultId).innerHTML = html;
+
+                if (resultId === 'importResult1') {
+                    file1Data = XLSX.utils.sheet_to_json(sheet);
+                } else {
+                    file2Data = XLSX.utils.sheet_to_json(sheet);
+                }
+
+                updateCategoryOptions();
+                showCategory();
+            };
+            reader.readAsArrayBuffer(file);
+        } else {
+            alert('Please select a file to import.');
+        }
+    }
+
+    function updateCategoryOptions() {
+        var categories = new Set();
+        if (file1Data) {
+            file1Data.forEach(row => {
+                if (row.Category) categories.add(row.Category);
+            });
+        }
+        if (file2Data) {
+            file2Data.forEach(row => {
+                if (row.Category) categories.add(row.Category);
+            });
+        }
+
+        var select = document.getElementById('categorySelect');
+        select.innerHTML = '<option value="All">All</option>';
+        categories.forEach(category => {
+            var option = document.createElement('option');
+            option.value = category;
+            option.text = category;
+            select.appendChild(option);
+        });
+    }
+
+    function showCategory() {
+        var selectedCategory = document.getElementById('categorySelect').value;
+        var categoryResult1 = document.getElementById('categoryResult1');
+        var categoryResult2 = document.getElementById('categoryResult2');
+        categoryResult1.innerHTML = '';
+        categoryResult2.innerHTML = '';
+
+        if (file1Data) {
+            var filteredData = selectedCategory === "All" ? file1Data : filterByCategory(file1Data, selectedCategory);
+            var table = createTable(filteredData, "File 1");
+            categoryResult1.appendChild(table);
+        }
+
+        if (file2Data) {
+            var filteredData = selectedCategory === "All" ? file2Data : filterByCategory(file2Data, selectedCategory);
+            var table = createTable(filteredData, "File 2");
+            categoryResult2.appendChild(table);
+        }
+    }
+
+    function filterByCategory(data, category) {
+        return data.filter(row => row.Category === category);
+    }
+
+    function createTable(data, fileName) {
+        var container = document.createElement('div');
+        var title = document.createElement('h3');
+        title.innerText = fileName + " - " + (document.getElementById('categorySelect').value || "All Categories");
+        container.appendChild(title);
+
+        var table = document.createElement('table');
+        if (data.length === 0) return container;
+
+        var headers = Object.keys(data[0]);
+        var thead = table.createTHead();
+        var row = thead.insertRow();
+        headers.forEach(header => {
+            var th = document.createElement('th');
+            th.innerText = header;
+            row.appendChild(th);
+        });
+
+        var tbody = table.createTBody();
+        data.forEach(item => {
+            var row = tbody.insertRow();
+            headers.forEach(header => {
+                var cell = row.insertCell();
+                cell.innerText = item[header];
+            });
+        });
+
+        container.appendChild(table);
+        return container;
+    }
+</script>
+
+<div class="container">
+    <h1>File Import and Category Filter</h1>
+
+    <div class="button-container" style="display: flex; gap: 10px;">
+        <button class="entrance" onclick="triggerFileImport('fileInput1')">Import File 1</button>
+        <input type="file" id="fileInput1" style="display:none;" onchange="importFile('fileInput1', 'importResult1')">
+
+        <button class="entrance" onclick="triggerFileImport('fileInput2')">Import File 2</button>
+        <input type="file" id="fileInput2" style="display:none;" onchange="importFile('fileInput2', 'importResult2')">
+    </div>
+
+    <div class="table-container">
+        <div id="importResult1" class="form-container"></div>
+        <div id="importResult2" class="form-container"></div>
+    </div>
+
+    <div class="filter-container">
+        <label for="categorySelect">Select Category:</label>
+        <select id="categorySelect" onchange="showCategory()"></select>
+    </div>
+
+    <div class="category-container">
+        <div id="categoryResult1" class="form-container"></div>
+        <div id="categoryResult2" class="form-container"></div>
+    </div>
+</div>
+
+<div>
+    <button onclick="location.href='/'" class="entrance">Home</button>
+</div>

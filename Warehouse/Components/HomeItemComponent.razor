@@ -1,0 +1,47 @@
+﻿@using Warehouse.Models
+
+<tr class="item-row">
+    <td class="item-tcell">
+        <input type="text" @bind="Item.Name" class="editable-input" readonly="@(!Item.IsEditing)" placeholder="Item Name" aria-label="Item Name" />
+    </td>
+    <td class="item-tcell">
+        <input type="number" @bind="Item.Quantity" class="editable-input" readonly="@(!Item.IsEditing)" placeholder="Quantity" aria-label="Quantity" />
+    </td>
+    <td class="item-tcell">
+        <input type="text" @bind="Item.Category" class="editable-input" readonly="@(!Item.IsEditing)" placeholder="Category" aria-label="Category" />
+    </td>
+    <td class="item-tcell">
+        @if (Item.IsEditing)
+        {
+            <button @onclick="() => SaveItem(Item)" aria-label="Save">Save</button>
+            <button @onclick="() => CancelEdit(Item)" aria-label="Cancel">Cancel</button>
+        }
+        else
+        {
+            <button @onclick="() => EditItem(Item)" aria-label="Edit">Edit</button>
+            <button @onclick="() => DeleteItem(Item)" aria-label="Delete">Delete</button>
+        }
+    </td>
+</tr>
+
+@code {
+    [Parameter] public required HomeItem Item { get; set; }
+
+    [Parameter] public EventCallback<HomeItem> OnSave { get; set; }
+    [Parameter] public EventCallback<HomeItem> OnDelete { get; set; }
+
+    private void EditItem(HomeItem item) => item.IsEditing = true;
+
+    private async Task SaveItem(HomeItem item)
+    {
+        item.IsEditing = false;
+        await OnSave.InvokeAsync(item);
+    }
+
+    private void CancelEdit(HomeItem item) => item.IsEditing = false;
+
+    private async Task DeleteItem(HomeItem item)
+    {
+        await OnDelete.InvokeAsync(item);
+    }
+}

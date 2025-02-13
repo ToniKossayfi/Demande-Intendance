@@ -1,0 +1,270 @@
+﻿@page "/order"
+@inject IJSRuntime JS
+@inject IBlazorDownloadFileService downloadFileService
+@inject ILogger<Order> Logger
+
+@using Warehouse.Models
+
+@rendermode InteractiveServer
+
+<link rel="stylesheet" href="Ordergh.css">
+
+<script>
+    function triggerFileImport() {
+        console.log('Triggering file import...');
+        document.getElementById('fileInput').click();
+    }
+
+    function importFile() {
+        var input = document.getElementById('fileInput');
+        var file = input.files[0];
+        if (file) {
+            console.log('File selected: ' + file.name);
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('importResult').innerHTML = e.target.result;
+                console.log('File read successfully');
+            };
+            reader.readAsText(file);
+        } else {
+            alert('Please select a file to import.');
+            console.log('No file selected');
+        }
+    }
+
+    function saveAsFile(filename, bytesBase64) {
+        console.log('Saving file: ' + filename);
+        var link = document.createElement('a');
+        link.download = filename;
+        link.href = 'data:application/octet-stream;base64,' + bytesBase64;
+        document.body.appendChild(link); // Needed for Firefox
+        link.click();
+        document.body.removeChild(link);
+        console.log('File saved successfully');
+    }
+</script>
+
+<div class="container">
+    <h1>Place an Order</h1>
+    <div class="form-container">
+        <div class="form-group">
+            <label for="CustomerName">le nom de l'unité:</label>
+            <input type="text" id="CustomerName" @bind="customerName" placeholder="le nom de l'unité">
+        </div>
+        <button @onclick="ExportToExcel">Export to Excel</button>
+    </div>
+
+    <div class="form-group">
+        <label for="FilterCategory">Filter by Category:</label>
+        <select id="FilterCategory" @bind="selectedCategory">
+            <option value="All">All</option>
+            @foreach (var category in categories)
+            {
+                <option value="@category">@category</option>
+            }
+        </select>
+    </div>
+
+    <div class="item-list-order">
+        <h2>Select Items and Quantities</h2>
+        @foreach (var item in GetFilteredItems())
+        {
+            <div class="custom-item">
+                <input type="checkbox" id="@item.Name" @bind="item.IsSelected" @onclick="(() => ToggleQuantityInput(item))" />
+                <label for="@item.Name">@item.Name (@item.Quantity) - @item.Category</label>
+                <div class="quantity-container" style="display: @(item.IsSelected ? "block" : "none");">
+                    <label for="quantity-@item.Name"></label>
+                    <input type="number" id="quantity-@item.Name" @bind="item.OrderQuantity" min="1" max="@item.Quantity" placeholder="Quantity" />
+                </div>
+            </div>
+        }
+    </div>
+</div>
+<div>
+    <button onclick="location.href='/'" class="entrance">Home</button>
+</div>
+
+@code {
+    private string customerName { get; set; }
+    private List<OrderItem> itemList { get; set; } = new List<OrderItem>();
+    private List<string> categories { get; set; } = new List<string>();
+    private bool isInitialized { get; set; } = false;
+    private string selectedCategory { get; set; } = "All";
+    private List<string> filteredCategories { get; set; } = new List<string> { "All" };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            Console.WriteLine("Fetching categories from localStorage...");
+            var categoryData = await JS.InvokeAsync<string>("localStorage.getItem", "categories");
+            if (!string.IsNullOrEmpty(categoryData))
+            {
+                categories = JsonSerializer.Deserialize<List<string>>(categoryData);
+                filteredCategories.AddRange(categories);
+                Console.WriteLine("Categories fetched successfully: " + categories.Count);
+            }
+            else
+            {
+                Console.WriteLine("No categories found in localStorage.");
+            }
+
+            Console.WriteLine("Fetching items from localStorage...");
+            var itemData = await JS.InvokeAsync<string>("localStorage.getItem", "itemList");
+            if (!string.IsNullOrWhiteSpace(itemData))
+            {
+                itemList = JsonSerializer.Deserialize<List<OrderItem>>(itemData);
+                Console.WriteLine("Items fetched successfully: " + itemList.Count);
+            }
+            else
+            {
+                Console.WriteLine("No items found in localStorage.");
+            }
+
+            isInitialized = true;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ExportToExcel()
+    {
+        if (string.IsNullOrWhiteSpace(customerName))
+        {
+            Console.WriteLine("Customer name is required.");
+            return;
+        }
+
+        Console.WriteLine("Exporting selected items to Excel...");
+        using (var package = new ExcelPackage())
+        {
+            var worksheet = package.Workbook.Worksheets.Add("Order");
+
+
+            worksheet.Cells[3, 1].Value = "Item Name";
+            worksheet.Cells[3, 2].Value = "Ordered Quantity";
+            worksheet.Cells[3, 3].Value = "Category";
+
+            var selectedItems = itemList.Where(i => i.IsSelected && i.OrderQuantity > 0).ToList();
+            for (int i = 0; i < selectedItems.Count; i++)
+            {
+                worksheet.Cells[i + 4, 1].Value = selectedItems[i].Name;
+                worksheet.Cells[i + 4, 2].Value = selectedItems[i].OrderQuantity;
+                worksheet.Cells[i + 4, 3].Value = selectedItems[i].Category;
+            }
+
+            var fileName = $"{customerName}_order.xlsx";
+            var fileContent = package.GetAsByteArray();
+            await downloadFileService.DownloadFile(fileName, fileContent, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            Console.WriteLine("Excel file generated and downloaded successfully.");
+        }
+    }
+
+    private void OnCategoryChanged(ChangeEventArgs e)
+    {
+        selectedCategory = e.Value.ToString();
+        StateHasChanged();
+    }
+
+    private IEnumerable<OrderItem> GetFilteredItems()
+    {
+        if (selectedCategory == "All")
+        {
+            return itemList;
+        }
+        return itemList.Where(i => i.Category == selectedCategory);
+    }
+
+    private async Task TriggerFileImport()
+    {
+        Console.WriteLine("Triggering file import...");
+        await JS.InvokeVoidAsync("triggerFileImport");
+    }
+
+    private async Task ImportFromExcel(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file != null)
+        {
+            Console.WriteLine("File selected: " + file.Name);
+            try
+            {
+                using (var memoryStream = new MemoryStream())
+                {
+                    await file.OpenReadStream().CopyToAsync(memoryStream);
+                    memoryStream.Position = 0;
+                    Console.WriteLine("File read into memory stream");
+
+                    using (var package = new ExcelPackage(memoryStream))
+                    {
+                        var worksheet = package.Workbook.Worksheets[0];
+
+                        if (worksheet == null)
+                        {
+                            Console.WriteLine("No worksheets found in the file.");
+                            return;
+                        }
+
+                        Console.WriteLine("Worksheet loaded. Rows: " + worksheet.Dimension.Rows);
+
+                        itemList.Clear();
+                        for (int row = 2; row <= worksheet.Dimension.Rows; row++)
+                        {
+                            var name = worksheet.Cells[row, 1].Text;
+                            var quantityText = worksheet.Cells[row, 2].Text;
+                            var category = worksheet.Cells[row, 3].Text;
+
+                            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(quantityText) || string.IsNullOrWhiteSpace(category))
+                            {
+                                Console.WriteLine($"Skipping row {row} due to missing data.");
+                                continue;
+                            }
+
+                            if (!int.TryParse(quantityText, out var quantity))
+                            {
+                                Console.WriteLine($"Invalid quantity in row {row}: {quantityText}");
+                                continue;
+                            }
+
+                            var item = new OrderItem
+                                {
+                                    Name = name,
+                                    Quantity = quantity,
+                                    Category = category
+                                };
+
+                            itemList.Add(item);
+                            Console.WriteLine($"Item added: {item.Name}, {item.Quantity}, {item.Category}");
+                        }
+
+                        await SaveToLocalStorage();
+                        Console.WriteLine("Items imported and saved to localStorage. Total items: " + itemList.Count);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error importing file: " + ex.Message);
+            }
+        }
+        else
+        {
+            Console.WriteLine("No file selected.");
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task SaveToLocalStorage()
+    {
+        var data = JsonSerializer.Serialize(itemList);
+        await JS.InvokeVoidAsync("localStorage.setItem", "itemList", data);
+        Console.WriteLine("Items saved to localStorage");
+    }
+
+    private void ToggleQuantityInput(OrderItem item)
+    {
+        var quantityContainer = item.IsSelected ? "block" : "none";
+        JS.InvokeVoidAsync("eval", $"document.getElementById('quantity-{item.Name}').parentElement.style.display = '{quantityContainer}'");
+    }
+}
+

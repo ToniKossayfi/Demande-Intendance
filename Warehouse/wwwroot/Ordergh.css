@@ -1,0 +1,257 @@
+﻿body {
+    font-family: 'Arial', sans-serif;
+    background-color: #FAFAFA; /* Light background for modern look */
+    color: #333333; /* Dark grey text */
+    margin: 0;
+    padding: 0;
+}
+
+h1, h2 {
+    color: #C8102E; /* Red headings */
+}
+
+.container {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+    border-radius: 8px;
+    background-color: #FFFFFF; /* White background */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow for modern look */
+}
+
+.form-container, .item-list {
+    margin-top: 20px;
+    background-color: #FFFFFF; /* White background */
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow for modern look */
+    margin-right:0;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #C8102E; /* Red labels */
+}
+
+input[type="text"], input[type="number"], select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #CCCCCC; /* Light grey border */
+    border-radius: 4px;
+    background-color: #FFFFFF; /* White input background */
+    color: #333333; /* Dark grey text */
+}
+
+button {
+    background-color: #006A4E; /* Green button */
+    color: #FFFFFF; /* White text */
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.3s ease; /* Smooth transition */
+}
+
+    button:hover {
+        background-color: #004D36; /* Darker green on hover */
+        transform: scale(1.05); /* Slightly enlarge on hover */
+    }
+
+.item-list {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+    .item-list th, .item-list td {
+        border: 1px solid #CCCCCC; /* Light grey border */
+        padding: 10px;
+        text-align: center;
+    }
+
+    .item-list th {
+        background-color: #006A4E; /* Green background */
+        color: #FFFFFF; /* White text */
+        font-weight: bold;
+    }
+
+.custom-item {
+    display: flex;
+    align-items: center;
+    background-color: #EFEFEF; /* Light grey background for custom items */
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    border: 1px solid #CCCCCC; /* Light grey border */
+}
+
+    .custom-item input[type="checkbox"] {
+        margin-right: 10px;
+        width: 20px;
+        height: 20px;
+        appearance: none;
+        background-color: #FFFFFF; /* White background for checkbox */
+        border: 2px solid #CCCCCC; /* Light grey border for checkbox */
+        border-radius: 4px;
+        cursor: pointer;
+        outline: none;
+        transition: background-color 0.3s ease, border 0.3s ease; /* Smooth transition */
+    }
+
+        .custom-item input[type="checkbox"]:checked {
+            background-color: #C8102E; /* Red background when checked */
+            border-color: #C8102E; /* Red border when checked */
+        }
+
+            .custom-item input[type="checkbox"]:checked:before {
+                content: '';
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                width: 5px;
+                height: 10px;
+                border: solid white;
+                border-width: 0 2px 2px 0;
+                transform: translate(-50%, -50%) rotate(45deg);
+                display: block;
+            }
+
+    .custom-item label {
+        flex-grow: 1;
+        margin: 0;
+        color: #333333; /* Dark grey text */
+    }
+
+.quantity-container {
+    display: flex;
+    align-items: center;
+    background-color: transparent; /* Transparent background for quantity container */
+    padding: 0;
+    border-radius: 4px;
+    margin-left: auto;
+}
+
+    .quantity-container label {
+        color: #C8102E; /* Red labels */
+        margin-right: 10px; /* Space between label and input */
+    }
+
+    .quantity-container input[type="number"] {
+        width: 60px; /* Adjust width as needed */
+        padding: 5px;
+        border: 1px solid #CCCCCC; /* Light grey border */
+        border-radius: 4px;
+        background-color: #FFFFFF; /* White input background */
+        color: #333333; /* Dark grey text */
+    }
+
+.main-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh; /* Full viewport height */
+    flex-direction: column; /* Stack the buttons vertically */
+}
+
+.entrance {
+    background-color: #006A4E; /* Green button */
+    color: #FFFFFF; /* White text */
+    border: none;
+    padding: 20px; /* Adjusted padding for a more balanced button size */
+    width: 200px; /* Fixed width */
+    height: 60px; /* Fixed height */
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.3s ease; /* Smooth transition */
+    font-size: 20px; /* Larger font size */
+    text-shadow: 0 0 5px #006A4E, 0 0 10px #006A4E, 0 0 20px #006A4E;
+    margin: 10px; /* Margin between buttons */
+}
+
+    .entrance:hover {
+        background-color: #004D36; /* Darker green on hover */
+        box-shadow: 0 0 10px #006A4E, 0 0 20px #006A4E, 0 0 30px #006A4E;
+        transform: scale(1.05);
+    }
+
+.item-header, .item-tcell {
+    padding: 15px; /* Increased padding */
+    border: 1px solid #CCCCCC; /* Light grey border to match the table */
+    text-align: center; /* Center the text */
+    background-color: #FFFFFF; /* White background */
+    color: #333333; /* Dark grey text */
+    border-radius: 4px; /* Rounded corners to match the theme */
+    box-sizing: border-box; /* Ensure padding and border are included in the width and height */
+    height: 70px; /* Increased height for uniformity */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+}
+
+.item-header {
+    background-color: #006A4E; /* Green background */
+    color: #FFFFFF; /* White text */
+    font-weight: bold;
+}
+
+.item-tcell:hover {
+    background-color: #EFEFEF; /* Slightly darker background on hover */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Slightly more pronounced shadow on hover */
+}
+
+.item-tcell input[type="text"], .item-tcell input[type="number"], .item-tcell select {
+    width: 90%; /* Adjust width as needed to fit within the cell */
+    padding: 10px; /* Increased padding */
+    margin: 0 auto; /* Center the input within the cell */
+    border: 1px solid #CCCCCC; /* Light grey border */
+    border-radius: 4px; /* Rounded corners */
+    background-color: #FFFFFF; /* White input background */
+    color: #333333; /* Dark grey text */
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
+
+.table-container {
+    flex: 1;
+    padding: 10px;
+    border-radius: 8px;
+    background-color: #F7F7F7; /* Light grey background for contrast */
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1); /* Slight shadow for depth */
+    overflow-x: auto; /* Horizontal scroll if content overflows */
+}
+
+    .table-container table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .table-container th, .table-container td {
+        border: 1px solid #CCCCCC; /* Light grey border */
+        padding: 10px;
+        text-align: center;
+    }
+
+    .table-container th {
+        background-color: #006A4E; /* Green background */
+        color: #FFFFFF; /* White text */
+        font-weight: bold;
+    }
+.category-container ,.plain-container{
+    display: flex;
+    justify-content: space-between; /* Distribute space between elements */
+    gap: 20px; /* Space between the two results */
+    padding: 20px;
+    border-radius: 8px;
+    background-color: #FFFFFF; /* White background */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow for modern look */
+}
+.filter-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
